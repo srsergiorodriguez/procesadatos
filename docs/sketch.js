@@ -1,10 +1,12 @@
 function setup() {
   noCanvas();
-  loaderGUI('#counter', 'counter', countRegex);
-  loaderGUI('#flourish-formatter', 'flourish-formatter', formatFlourish);
+  loaderGUI('counter', countRegex);
+  loaderGUI('flourish-formatter', formatFlourish);
+  loaderGUI('media-preview', previewImgs);
 }
 
-function loaderGUI(container, name, func) {
+function loaderGUI(name, func) {
+  const container = "#" + name;
   const loaderDiv = createDiv().class("loader-div").parent(container);
   // Muestra la interfaz inicial de carga de archivos
 
@@ -27,10 +29,82 @@ function loaderGUI(container, name, func) {
   })
 }
 
+function previewImgs(container, blob) {
+  d3.csv(blob, d=>d).then(data => {
+    if (selectAll(".preview-div")) {selectAll(".preview-div").map(d=>d.remove())};
+    const previewDiv = createDiv().class("preview-div").parent(container);
+
+    createP("Selecciona la columna con media").parent(previewDiv)
+    const mediaColumn = createSelect().parent(previewDiv);
+    for (let e of data.columns) {
+      mediaColumn.option(e);
+    }
+
+    let selection = [];
+
+    createButton("previsualizar").parent(previewDiv).mouseClicked(() => {
+      const mediaList = data.map(d => d[mediaColumn.value()]);
+
+      const imagesDiv = createDiv().parent(previewDiv);
+      const mediaData = [];
+      for (let i = 0; i < 1000; i++) {
+        const url = mediaList[i];
+        let temp;
+        if (url.includes("media")) {
+          temp = {
+            media: mediaList[i],
+            type: "media"
+          }
+          const img = createImg(mediaList[i],"").style("border", "1px solid rgb(0, 0, 0)").style("width","70px").parent(imagesDiv)
+          img.mouseClicked((e)=>{
+            const state = img.style("border") === "4px solid rgb(255, 0, 0)" ? false : true;
+            if (state === true) {
+              selection[i] = data[i];
+            } else if (state === false) {
+              selection[i] = undefined;
+            }
+            const border = state === false ? "1px solid rgb(0, 0, 0)" : state === true ? "4px solid rgb(255, 0, 0)" : "";
+            console.log(mediaList[i]);
+            img.style("border", border);
+          })
+        } else if (url.includes("ext_tw_video")) {
+          if (url.includes(".mp4")) {
+            temp = {
+            media: mediaList[i],
+            type: "ext_tw_video"
+            }
+          } else {
+            temp = {type: "no media"}
+          }
+        } else if (url.includes("tweet_video")) {
+          temp = {
+            media: mediaList[i],
+            type: "tweet_video"
+          }
+        } else {
+          temp = {type: "no media"}
+        }
+        mediaData.push(temp);
+      }
+    });
+
+    createButton("guardar datos de selección").parent(previewDiv).mouseClicked(() => {
+      const filteredSelection = [[data.columns]];
+      for (let e of selection) {
+        if (e !== undefined) {
+          filteredSelection.push(Object.values(e).map(d=>'"'+d+'"'));
+        }
+      }
+      //saveStrings([selection.reduce((a, c) => a + (c !== undefined ? c : "") + "\n","")], "seleccion.txt");
+      createStringDict(filteredSelection).saveTable('seleccionImgs');
+    });
+  });
+}
+
 function formatFlourish(container, blob) {
   d3.csv(blob, d=>d).then(data => {
     if (selectAll(".flourish-formatter-div")) {selectAll(".flourish-formatter-div").map(d=>d.remove())};
-    const flourishFormatterDiv = createDiv().class(".flourish-formatter-div").parent(container);
+    const flourishFormatterDiv = createDiv().class("flourish-formatter-div").parent(container);
 
     createP("Selecciona la columna con grupos (p.e. fechas)").parent(flourishFormatterDiv)
     const groupColumn = createSelect().parent(flourishFormatterDiv);
@@ -75,7 +149,7 @@ function formatFlourish(container, blob) {
 function countRegex(container, blob) {
   d3.csv(blob, d=>d).then(data => {
     if (selectAll(".count-regex-div")) {selectAll(".count-regex-div").map(d=>d.remove())};
-    const filterDiv = createDiv().class(".count-regex-div").parent(container);
+    const filterDiv = createDiv().class("count-regex-div").parent(container);
 
     createP("Selecciona columna para agrupar (por ejemplo, por fecha): ").parent(filterDiv)
     const groupColumn = createSelect().parent(filterDiv);
