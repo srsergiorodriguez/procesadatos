@@ -106,20 +106,20 @@ function formatFlourish(container, blob) {
     if (selectAll(".flourish-formatter-div")) {selectAll(".flourish-formatter-div").map(d=>d.remove())};
     const flourishFormatterDiv = createDiv().class("flourish-formatter-div").parent(container);
 
-    createP("Selecciona la columna con grupos (p.e. fechas)").parent(flourishFormatterDiv)
+    createP("Selecciona el eje X o columnas (p.e. fechas)").parent(flourishFormatterDiv)
     const groupColumn = createSelect().parent(flourishFormatterDiv);
     for (let e of data.columns) {
       groupColumn.option(e);
     }
 
-    createP("Selecciona la columna con valores (p.e. frecuencias)").parent(flourishFormatterDiv)
+    createP("Selecciona los valores numéricos (p.e. frecuencias)").parent(flourishFormatterDiv)
     const valColumn = createSelect().parent(flourishFormatterDiv);
     for (let e of data.columns) {
       valColumn.option(e);
     }
     valColumn.selected(data.columns[1]);
 
-    createP("Selecciona la columna con categorías (p.e. hashtags of palabras)").parent(flourishFormatterDiv)
+    createP("Selecciona el eje Y o las filas (p.e. hashtags of palabras)").parent(flourishFormatterDiv)
     const catColumn = createSelect().parent(flourishFormatterDiv);
     for (let e of data.columns) {
       catColumn.option(e);
