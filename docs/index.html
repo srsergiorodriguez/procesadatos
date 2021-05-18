@@ -47,6 +47,19 @@
         padding: 5px;
       }
 
+      .masonry { /* Masonry container */
+        column-count: 15;
+        column-gap: 0px;
+        margin: 10px;
+      }
+
+      .masonry-item { /* Masonry bricks or child elements */
+        display: inline-block;
+        margin: 0px;
+        width: 70px;
+        border: solid 2px black;
+      }      
+
     </style>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.3.1/p5.min.js"></script>
@@ -55,10 +68,13 @@
   <body>
     <div id="general">
       <div id="counter" class="loader">
-        <p>Carga un archivo para contar palabras o expresiones regulares:</p>
+        <p>Carga un archivo para contar palabras o expresiones regulares agrupadas:</p>
       </div>
-      <div id="flourish-formatter" class="loader">
-        <p>Carga un archivo para darle el formato agrupado de flourish:</p>
+      <div id="count-filter" class="loader">
+        <p>Carga un archivo para filtrar por cantidades:</p>
+      </div>
+      <div id="matrix-formatter" class="loader">
+        <p>Carga un archivo para darle formato de matriz (especialmente para Flourish):</p>
       </div>
       <div id="media-preview" class="loader">
         <p>Carga un archivo para previsualizar una lista de imágenes en url:</p>
