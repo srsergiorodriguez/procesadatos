@@ -91,7 +91,13 @@ function countRegex(container, blob) {
       groupColumn.option(e);
     }
     let dateCheck = true;
-    createCheckbox("es fecha?", dateCheck).parent(filterDiv);
+    createCheckbox("es fecha?", dateCheck).parent(filterDiv).changed(()=>{
+      dateCheck = !dateCheck;
+    });
+    let hourCheck = false;
+    createCheckbox("con horas?", hourCheck).parent(filterDiv).changed(()=>{
+      hourCheck = !hourCheck;
+    });
 
     createP("Si es conteo, deja 'ninguna', si es suma, selecciona la columna con valores: ").parent(filterDiv)
     const valColumn = createSelect().parent(filterDiv);
@@ -127,7 +133,7 @@ function countRegex(container, blob) {
         }
         createStringDict(counts).saveTable('conteo');
       } else {
-        const format = d3.timeFormat("%Y-%m-%d");
+        const format = hourCheck ? d3.timeFormat("%Y-%m-%dT%H:00:00.000Z") : d3.timeFormat("%Y-%m-%d");
         const counts = [["grupo","expresion","frecuencia"]];
         const groups = [...new Set(data.map(d => {
           if (dateCheck) {
