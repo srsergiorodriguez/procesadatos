@@ -1,3 +1,5 @@
+//bogot[áa], cali, yumbo, barranquilla, pereira, popay[áa]n, medell[íi]n, tunja
+
 function setup() {
   noCanvas();
   loaderGUI('counter', countRegex);
@@ -82,7 +84,7 @@ function countRegex(container, blob) {
     if (selectAll(".count-regex-div")) {selectAll(".count-regex-div").map(d=>d.remove())};
     const filterDiv = createDiv().class("count-regex-div").parent(container);
 
-    createP("Selecciona columna para agrupar (por ejemplo, por fecha): ").parent(filterDiv)
+    createP("Selecciona columna para agrupar (por ejemplo, por fecha), o deja 'ninguna' para contar en general: ").parent(filterDiv)
     const groupColumn = createSelect().parent(filterDiv);
     groupColumn.option("ninguna");
     for (let e of data.columns) {
@@ -90,6 +92,13 @@ function countRegex(container, blob) {
     }
     let dateCheck = true;
     createCheckbox("es fecha?", dateCheck).parent(filterDiv);
+
+    createP("Si es conteo, deja 'ninguna', si es suma, selecciona la columna con valores: ").parent(filterDiv)
+    const valColumn = createSelect().parent(filterDiv);
+    valColumn.option("ninguna");
+    for (let e of data.columns) {
+      valColumn.option(e);
+    }
 
     createP("Selecciona columna para contar: ").parent(filterDiv)
     const selectColumn = createSelect().parent(filterDiv);
@@ -112,7 +121,7 @@ function countRegex(container, blob) {
         for (let e of data) {
           for (let exp of expressionsList) {
             if (exp[1].test(e[selectColumn.value()])) {
-              counts[exp[0]]++
+              counts[exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
             }
           }
         }
@@ -141,9 +150,9 @@ function countRegex(container, blob) {
             if (exp[1].test(e[selectColumn.value()])) {
               if (dateCheck) {
                 const val = new Date(e[groupColumn.value()]);
-                precount[format(val)][exp[0]]++
+                precount[format(val)][exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
               } else {
-                precount[e[groupColumn.value()]][exp[0]]++
+                precount[e[groupColumn.value()]][exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
               }
             }
           }
@@ -166,7 +175,7 @@ function formatMatrix(container, blob) {
     if (selectAll(".matrix-formatter-div")) {selectAll(".matrix-formatter-div").map(d=>d.remove())};
     const matrixFormatterDiv = createDiv().class("matrix-formatter-div").parent(container);
 
-    createP("Selecciona el eje X o columnas (p.e. fechas)").parent(matrixFormatterDiv)
+    createP("Selecciona el eje Y (p.e. fechas)").parent(matrixFormatterDiv)
     const groupColumn = createSelect().parent(matrixFormatterDiv);
     for (let e of data.columns) {
       groupColumn.option(e);
@@ -179,7 +188,7 @@ function formatMatrix(container, blob) {
     }
     valColumn.selected(data.columns[1]);
 
-    createP("Selecciona el eje Y o las filas (p.e. hashtags of palabras)").parent(matrixFormatterDiv)
+    createP("Selecciona el eje X (p.e. hashtags of palabras)").parent(matrixFormatterDiv)
     const catColumn = createSelect().parent(matrixFormatterDiv);
     for (let e of data.columns) {
       catColumn.option(e);
