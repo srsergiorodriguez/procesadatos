@@ -90,14 +90,21 @@ function countRegex(container, blob) {
     for (let e of data.columns) {
       groupColumn.option(e);
     }
-    let dateCheck = true;
-    createCheckbox("es fecha?", dateCheck).parent(filterDiv).changed(()=>{
-      dateCheck = !dateCheck;
-    });
-    let hourCheck = false;
-    createCheckbox("con horas?", hourCheck).parent(filterDiv).changed(()=>{
-      hourCheck = !hourCheck;
-    });
+
+    createSpan(" Formato de fecha?:  ").parent(filterDiv);
+    const dateFormat = createSelect().parent(filterDiv)
+    const formats = ["no es fecha", "año", "mes", "día", "hora", "minuto"];
+    const formatter = [
+      d => d,
+      d3.timeFormat("%Y"),
+      d3.timeFormat("%Y-%m"),
+      d3.timeFormat("%Y-%m-%d"),
+      d3.timeFormat("%Y-%m-%dT%H:00:00"),
+      d3.timeFormat("%Y-%m-%dT%H:%M:00")
+    ]
+    for (let i = 0; i < formats.length; i++) {
+      dateFormat.option(formats[i], i);
+    }
 
     createP("Si es conteo, deja 'ninguna', si es suma, selecciona la columna con valores: ").parent(filterDiv)
     const valColumn = createSelect().parent(filterDiv);
@@ -133,12 +140,11 @@ function countRegex(container, blob) {
         }
         createStringDict(counts).saveTable('conteo');
       } else {
-        const format = hourCheck ? d3.timeFormat("%Y-%m-%dT%H:00:00.000Z") : d3.timeFormat("%Y-%m-%d");
         const counts = [["grupo","expresion","frecuencia"]];
         const groups = [...new Set(data.map(d => {
-          if (dateCheck) {
+          if (dateFormat.value() !== formats[0]) {
             const val = new Date(d[groupColumn.value()]);
-            return format(val)
+            return formatter[dateFormat.value()](val)
           } else {
             return d[groupColumn.value()]
           }
@@ -154,9 +160,9 @@ function countRegex(container, blob) {
         for (let e of data) {
           for (let exp of expressionsList) {
             if (exp[1].test(e[selectColumn.value()])) {
-              if (dateCheck) {
+              if (dateFormat.value() !== formats[0]) {
                 const val = new Date(e[groupColumn.value()]);
-                precount[format(val)][exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
+                precount[formatter[dateFormat.value()](val)][exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
               } else {
                 precount[e[groupColumn.value()]][exp[0]] += valColumn.value() === "ninguna" ? 1 : +e[valColumn.value()];
               }
@@ -226,6 +232,8 @@ function previewImgs(container, blob) {
     if (selectAll(".preview-div")) {selectAll(".preview-div").map(d=>d.remove())};
     const previewDiv = createDiv().class("preview-div").parent(container);
 
+    const checkBorder = createCheckbox('Borde por tipo?', false).parent(previewDiv);
+
     createP("Selecciona la columna con media").parent(previewDiv)
     const mediaColumn = createSelect().parent(previewDiv);
     for (let e of data.columns) {
@@ -235,48 +243,69 @@ function previewImgs(container, blob) {
     let selection = [];
 
     createButton("previsualizar").parent(previewDiv).mouseClicked(() => {
+      selectAll(".border-check").map(d => d.remove());
+      if (checkBorder.checked()) {
+        createP("magenta: imagen / verde: gif / cyan: video").parent(previewDiv).class("border-check");
+      }
+
       const mediaList = data.map(d => d[mediaColumn.value()]);
 
+      selectAll(".masonry").map(d => d.remove());
       const imagesDiv = createDiv().class("masonry").parent(previewDiv);
       const mediaData = [];
-      for (let i = 0; i < 2000; i++) {
-        const url = mediaList[i];
+      for (let i = 0; i < d3.min([2000, mediaList.length]); i++) {
+        let url = mediaList[i];
+        if (url === "") {continue}
+        if (url.includes("; ")) {url = url.split("; ")[0]}
         let temp;
         if (url.includes("media")) {
+          const key = /media\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/media/${key}.jpg`
           temp = {
-            media: mediaList[i],
+            key,
+            preview,
             type: "media"
           }
+        } else if (url.includes("ext_tw_video")) {
+          const id = /ext_tw_video(_thumb)?\/(?<id>[0-9]*)\//.exec(url).groups.id;
+          const key = /\/(?<key>[_A-Za-z-0-9]{16})[.]/.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/ext_tw_video_thumb/${id}/pu/img/${key}.jpg`
+          // El preview en el formato de vicinitas no está sirviendo
+          temp = {
+            id,
+            key,
+            preview,
+            type: "ext_tw_video"
+          }
+        } else if (url.includes("tweet_video")) {
+          const key = /tweet_video(_thumb)?\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/tweet_video_thumb/${key}.jpg`;
+          temp = {
+            key,
+            preview,
+            type: "tweet_video"
+          }
+        } else {
+          temp = {type: "no media"}
+        }
+
+        if (temp.type !== "no media") {
           let selected = false;
-          const img = createImg(mediaList[i],"").class("masonry-item").parent(imagesDiv);
-          img.mouseClicked((e) => {
+          let col = temp.type === "media" ? "magenta" : temp.type === "tweet_video" ? "limegreen" : temp.type === "ext_tw_video" ? "cyan" : "black";
+          col = !checkBorder.checked() ? "black" : col;
+          const img = createImg(temp.preview,"").class("masonry-item").style("border", `2px solid ${col}`).parent(imagesDiv);
+          img.mouseClicked(() => {
             selected = selected === true ? false : true;
             if (selected === true) {
               selection[i] = data[i];
             } else if (selected === false) {
               selection[i] = undefined;
             }
-            const border = selected === false ? "2px solid rgb(0, 0, 0)" : selected === true ? "4px solid rgb(255, 0, 0)" : "";
-            console.log(mediaList[i]);
+            const border = selected === false ? `2px solid ${col}` : selected === true ? "2px solid rgb(255, 0, 0)" : "";
             img.style("border", border);
-          })
-        } else if (url.includes("ext_tw_video")) {
-          if (url.includes(".mp4")) {
-            temp = {
-            media: mediaList[i],
-            type: "ext_tw_video"
-            }
-          } else {
-            temp = {type: "no media"}
-          }
-        } else if (url.includes("tweet_video")) {
-          temp = {
-            media: mediaList[i],
-            type: "tweet_video"
-          }
-        } else {
-          temp = {type: "no media"}
+          })               
         }
+             
         mediaData.push(temp);
       }
     });
@@ -285,7 +314,7 @@ function previewImgs(container, blob) {
       const filteredSelection = [[data.columns]];
       for (let e of selection) {
         if (e !== undefined) {
-          filteredSelection.push(Object.values(e).map(d=>'"'+d+'"'));
+          filteredSelection.push(Object.values(e));
         }
       }
       createStringDict(filteredSelection).saveTable('seleccionImgs');
