@@ -387,7 +387,7 @@ function formatNetwork(container, blob) {
 
       createButton("exportar CSVs (para graphcommons y flourish)").parent(networkFormatterDiv).mouseClicked(() => {
         const writer = createWriter('conexiones.csv');
-        writer.print("From Type, From Name, Edge, To Type, To Name");
+        writer.print("From Type, From Name, Edge, To Type, To Name, Weight");
         for (let e of Object.keys(edges)) {
           for (let j of Object.keys(edges[e])) {
             writer.print(`${labelColumn.value()},${e},MENTION,${labelColumn.value()},${j},${edges[e][j]}`);
@@ -398,9 +398,10 @@ function formatNetwork(container, blob) {
         writer.clear();
 
         const writer2 = createWriter('nodos.csv');
-        writer2.print("Type, Name, Description, Image, Reference");
+        writer2.print("Type, Name, Description, Image, Reference, Degree");
         for (let e of Object.keys(edges)) {
-          writer2.print(`${labelColumn.value()},${e},,,`);
+          const weight = Object.keys(edges[e]).map( d => edges[e][d]).reduce((a,c) => a + c,0);
+          writer2.print(`${labelColumn.value()},${e},,,${weight}`);
         }
 
         writer2.close();
