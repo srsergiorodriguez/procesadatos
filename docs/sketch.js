@@ -1,10 +1,9 @@
-//bogot[áa], cali, yumbo, barranquilla, pereira, popay[áa]n, medell[íi]n, tunja
-
 function setup() {
   noCanvas();
   loaderGUI('counter', countRegex);
   loaderGUI('count-filter', countFilter);
   loaderGUI('matrix-formatter', formatMatrix);
+  loaderGUI('network-formatter', formatNetwork);
   loaderGUI('media-preview', previewImgs);
 }
 
@@ -318,6 +317,95 @@ function previewImgs(container, blob) {
         }
       }
       createStringDict(filteredSelection).saveTable('seleccionImgs');
+    });
+  });
+}
+
+function formatNetwork(container, blob) {
+  d3.csv(blob, d=>d).then(data => {
+    if (selectAll(".network-formatter-div")) {selectAll(".network-formatter-div").map(d=>d.remove())};
+    const networkFormatterDiv = createDiv().class("network-formatter-div").parent(container);
+
+    createP("Selecciona el label:").parent(networkFormatterDiv);
+    const labelColumn = createSelect().parent(networkFormatterDiv);
+    for (let e of data.columns) {
+      labelColumn.option(e);
+    }
+
+    createP("Selecciona la columna con el contenido:").parent(networkFormatterDiv);
+    const contentColumn = createSelect().parent(networkFormatterDiv);
+    for (let e of data.columns) {
+      contentColumn.option(e);
+    }
+
+    console.log(data);
+
+    createButton("formatear").parent(networkFormatterDiv).mouseClicked(() => {
+      const searchRegex = [/@[a-z0-9_]*/ig];
+      const clean = [
+        d => d.replace("@","")
+      ];
+      const edges = {};
+      for (let e of data) {
+        const matches = [...e[contentColumn.value()].matchAll(searchRegex[0])];
+        if (edges[e[labelColumn.value()]] === undefined) {
+          edges[e[labelColumn.value()]] = matches.map(d => clean[0](d[0]));
+        } else {
+          edges[e[labelColumn.value()]] = [...edges[e[labelColumn.value()]], ...matches.map(d => clean[0](d[0]))];
+        }
+      }
+
+      for (let e of Object.keys(edges)) {
+        const temp = {};
+        for (let j of edges[e]) {
+          if (temp[j] === undefined) {
+            temp[j] = 1;
+          } else {
+            temp[j]++;
+          }
+        }
+        edges[e] = temp;
+      }
+
+      createButton("exportar GDF (para Gephi)").parent(networkFormatterDiv).mouseClicked(() => {
+        const writer = createWriter('grafo.gdf');
+        writer.print("nodedef>name VARCHAR");
+        for (let e of Object.keys(edges)) {
+          writer.print(e);
+        }
+  
+        writer.print("edgedef>node1 VARCHAR,node2 VARCHAR, weight DOUBLE");
+        for (let e of Object.keys(edges)) {
+          for (let j of Object.keys(edges[e])) {
+            writer.print(`${e},${j},${edges[e][j]}`);
+          }
+        }
+  
+        writer.close();
+        writer.clear();
+      });
+
+      createButton("exportar CSVs (para graphcommons y flourish)").parent(networkFormatterDiv).mouseClicked(() => {
+        const writer = createWriter('conexiones.csv');
+        writer.print("From Type, From Name, Edge, To Type, To Name");
+        for (let e of Object.keys(edges)) {
+          for (let j of Object.keys(edges[e])) {
+            writer.print(`${labelColumn.value()},${e},MENTION,${labelColumn.value()},${j},${edges[e][j]}`);
+          }
+        }
+  
+        writer.close();
+        writer.clear();
+
+        const writer2 = createWriter('nodos.csv');
+        writer2.print("Type, Name, Description, Image, Reference");
+        for (let e of Object.keys(edges)) {
+          writer2.print(`${labelColumn.value()},${e},,,`);
+        }
+
+        writer2.close();
+        writer2.clear();
+      });
     });
   });
 }
