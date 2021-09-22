@@ -226,101 +226,6 @@ function formatMatrix(container, blob) {
   });
 }
 
-function previewImgs(container, blob) {
-  d3.csv(blob, d=>d).then(data => {
-    if (selectAll(".preview-div")) {selectAll(".preview-div").map(d=>d.remove())};
-    const previewDiv = createDiv().class("preview-div").parent(container);
-
-    const checkBorder = createCheckbox('Borde por tipo?', false).parent(previewDiv);
-
-    createP("Selecciona la columna con media").parent(previewDiv)
-    const mediaColumn = createSelect().parent(previewDiv);
-    for (let e of data.columns) {
-      mediaColumn.option(e);
-    }
-
-    let selection = [];
-
-    createButton("previsualizar").parent(previewDiv).mouseClicked(() => {
-      selectAll(".border-check").map(d => d.remove());
-      if (checkBorder.checked()) {
-        createP("magenta: imagen / verde: gif / cyan: video").parent(previewDiv).class("border-check");
-      }
-
-      const mediaList = data.map(d => d[mediaColumn.value()]);
-
-      selectAll(".masonry").map(d => d.remove());
-      const imagesDiv = createDiv().class("masonry").parent(previewDiv);
-      const mediaData = [];
-      for (let i = 0; i < d3.min([2000, mediaList.length]); i++) {
-        let url = mediaList[i];
-        if (url === "") {continue}
-        if (url.includes("; ")) {url = url.split("; ")[0]}
-        let temp;
-        if (url.includes("media")) {
-          const key = /media\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
-          const preview = `https://pbs.twimg.com/media/${key}.jpg`
-          temp = {
-            key,
-            preview,
-            type: "media"
-          }
-        } else if (url.includes("ext_tw_video")) {
-          const id = /ext_tw_video(_thumb)?\/(?<id>[0-9]*)\//.exec(url).groups.id;
-          const key = /\/(?<key>[_A-Za-z-0-9]{16})[.]/.exec(url).groups.key;
-          const preview = `https://pbs.twimg.com/ext_tw_video_thumb/${id}/pu/img/${key}.jpg`
-          // El preview en el formato de vicinitas no está sirviendo
-          temp = {
-            id,
-            key,
-            preview,
-            type: "ext_tw_video"
-          }
-        } else if (url.includes("tweet_video")) {
-          const key = /tweet_video(_thumb)?\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
-          const preview = `https://pbs.twimg.com/tweet_video_thumb/${key}.jpg`;
-          temp = {
-            key,
-            preview,
-            type: "tweet_video"
-          }
-        } else {
-          temp = {type: "no media"}
-        }
-
-        if (temp.type !== "no media") {
-          let selected = false;
-          let col = temp.type === "media" ? "magenta" : temp.type === "tweet_video" ? "limegreen" : temp.type === "ext_tw_video" ? "cyan" : "black";
-          col = !checkBorder.checked() ? "black" : col;
-          const img = createImg(temp.preview,"").class("masonry-item").style("border", `2px solid ${col}`).parent(imagesDiv);
-          img.mouseClicked(() => {
-            selected = selected === true ? false : true;
-            if (selected === true) {
-              selection[i] = data[i];
-            } else if (selected === false) {
-              selection[i] = undefined;
-            }
-            const border = selected === false ? `2px solid ${col}` : selected === true ? "2px solid rgb(255, 0, 0)" : "";
-            img.style("border", border);
-          })               
-        }
-             
-        mediaData.push(temp);
-      }
-    });
-
-    createButton("guardar datos de selección").parent(previewDiv).mouseClicked(() => {
-      const filteredSelection = [[data.columns]];
-      for (let e of selection) {
-        if (e !== undefined) {
-          filteredSelection.push(Object.values(e));
-        }
-      }
-      createStringDict(filteredSelection).saveTable('seleccionImgs');
-    });
-  });
-}
-
 function formatNetwork(container, blob) {
   d3.csv(blob, d=>d).then(data => {
     if (selectAll(".network-formatter-div")) {selectAll(".network-formatter-div").map(d=>d.remove())};
@@ -337,8 +242,6 @@ function formatNetwork(container, blob) {
     for (let e of data.columns) {
       contentColumn.option(e);
     }
-
-    console.log(data);
 
     createButton("formatear").parent(networkFormatterDiv).mouseClicked(() => {
       const searchRegex = [/@[a-z0-9_]*/ig];
@@ -410,3 +313,127 @@ function formatNetwork(container, blob) {
     });
   });
 }
+
+function previewImgs(container, blob) {
+  d3.csv(blob, d=>d).then(data => {
+    if (selectAll(".preview-div")) {selectAll(".preview-div").map(d=>d.remove())};
+    const previewDiv = createDiv().class("preview-div").parent(container);
+
+    const checkBorder = createCheckbox('Borde por tipo?', false).parent(previewDiv);
+
+    createP("Selecciona la columna con media").parent(previewDiv)
+    const mediaColumn = createSelect().parent(previewDiv);
+    for (let e of data.columns) {
+      mediaColumn.option(e);
+    }
+
+    createP("Selecciona la columna con valor para cambiar el tamaño proporcionalmente").parent(previewDiv)
+    const valColumn = createSelect().parent(previewDiv);
+    valColumn.option("ninguna");
+    for (let e of data.columns) {
+      valColumn.option(e);
+    }
+
+    createP("Selecciona la columna con fechas").parent(previewDiv)
+    const dateColumn = createSelect().parent(previewDiv);
+    dateColumn.option("ninguna");
+    for (let e of data.columns) {
+      dateColumn.option(e);
+    }
+
+    let selection = [];
+
+    createButton("previsualizar").parent(previewDiv).mouseClicked(() => {
+      selectAll(".border-check").map(d => d.remove());
+      if (checkBorder.checked()) {
+        createP("magenta: imagen / verde: gif / cyan: video").parent(previewDiv).class("border-check");
+      }
+
+      const mediaList = data.map(d => d[mediaColumn.value()]);
+      const extent = valColumn.value() === "ninguna" ? undefined : d3.extent(data, d => +d[valColumn.value()]);
+
+      selectAll(".masonry").map(d => d.remove());
+      const imagesDiv = createDiv().class("masonry").parent(previewDiv);
+      const mediaData = [];
+      let date;
+
+      for (let i = 0; i < d3.min([2000, mediaList.length]); i++) {
+        let url = mediaList[i];
+        if (url === "") {continue}
+        if (url.includes("; ")) {url = url.split("; ")[0]}
+        let temp;
+        if (url.includes("media")) {
+          const key = /media\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/media/${key}.jpg`
+          temp = {
+            key,
+            preview,
+            type: "media"
+          }
+        } else if (url.includes("ext_tw_video")) {
+          const id = /ext_tw_video(_thumb)?\/(?<id>[0-9]*)\//.exec(url).groups.id;
+          const key = /\/(?<key>[_A-Za-z-0-9]{16})[.]/.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/ext_tw_video_thumb/${id}/pu/img/${key}.jpg`
+          // El preview en el formato de vicinitas no está sirviendo
+          temp = {
+            id,
+            key,
+            preview,
+            type: "ext_tw_video"
+          }
+        } else if (url.includes("tweet_video")) {
+          const key = /tweet_video(_thumb)?\/(?<key>[_A-Za-z-0-9]*)./.exec(url).groups.key;
+          const preview = `https://pbs.twimg.com/tweet_video_thumb/${key}.jpg`;
+          temp = {
+            key,
+            preview,
+            type: "tweet_video"
+          }
+        } else {
+          temp = {type: "no media"}
+        }
+
+        // MOSTRAR IMÁGENES LUEGO DE QUE FUERON CLASIFICADAS
+
+        let newDate = dateColumn.value() === "ninguna" ? undefined : data[i][dateColumn.value()];
+        if (newDate !== date) {
+          date = newDate;
+          createP(newDate).style("font-size","12px").parent(imagesDiv);
+        }
+        
+        if (temp.type !== "no media") {
+          let selected = false;
+          // IMAGEN - GIF - VIDEO
+          let col = temp.type === "media" ? "magenta" : temp.type === "tweet_video" ? "limegreen" : temp.type === "ext_tw_video" ? "cyan" : "black";
+          col = !checkBorder.checked() ? "black" : col;
+
+          const img = createImg(temp.preview,"").class("masonry-item").style("border", `2px solid ${col}`).parent(imagesDiv);
+          img.style("width", valColumn.value() === "ninguna" ? "70px" : map(data[i][valColumn.value()], extent[0], extent[1], 10, 100)+"px");
+          img.mouseClicked(() => {
+            selected = selected === true ? false : true;
+            if (selected === true) {
+              selection[i] = data[i];
+            } else if (selected === false) {
+              selection[i] = undefined;
+            }
+            const border = selected === false ? `2px solid ${col}` : selected === true ? "2px solid rgb(255, 0, 0)" : "";
+            img.style("border", border);
+          })               
+        }
+             
+        mediaData.push(temp);
+      }
+    });
+
+    createButton("guardar datos de selección").parent(previewDiv).mouseClicked(() => {
+      const filteredSelection = [[data.columns]];
+      for (let e of selection) {
+        if (e !== undefined) {
+          filteredSelection.push(Object.values(e));
+        }
+      }
+      createStringDict(filteredSelection).saveTable('seleccionImgs');
+    });
+  });
+}
+
